@@ -2,6 +2,9 @@ import numpy as np
 import scipy
 from scipy import interpolate
 
+import argparse
+import sys  
+
 
 def calc_quantities(lapse_rate,weight, dep_elev, dep_pres, dep_temp, cruise_alt, cruise_temp, RPM, dest_elev, dest_pres, dest_temp):
     dep_pres_alt    = dep_elev   - (dep_pres - 29.92)*1000 
@@ -348,30 +351,31 @@ def landing(dest_pres,dest_temp):
 
 
 
-def main():
-    lapse_rate = 2. #deg. per 1000 ft
+def main(argv):
+
+    lapse_rate = 2.   #deg. per 1000 ft
     weight     = 2550 #lbs
 
     #DEPARTURE:
-    dep_elev = 22      #ft
-    dep_pres = 30.26   #in. Hg
-    dep_temp = 24      #Celsius
+    dep_elev =   int(raw_input("Departure airport elevation [22 ft]:") or 22.)                #ft
+    dep_pres = float(raw_input("Departure airport pressure setting [29.92 in Hg]:") or 29.92) #in. Hg
+    dep_temp =   int(raw_input("Departure airport temperature [15 C]:") or 15.)               #Celsius
 
 
     #CRUISE:
-    cruise_alt = 5500  #MSL
-    cruise_temp= 8     #Celsius
-    RPM        = 2400   
+    cruise_alt = int(raw_input("Cruise altitude [3000 ft]:") or 3000)             # ft MSL
+    cruise_temp= int(raw_input("Cruise altitude temperature [9 Celsius]:") or 9)  # Celsius
+    RPM        = int(raw_input("Cruise RPM [2300]:") or 2300)                     #RPM
 
 
     #ARRIVAL:
-    dest_elev = 1099   #ft
-    dest_pres = 30.32  #in. Hg
-    dest_temp = 22     #Celsius
+    dest_elev = int(raw_input("Arrival airport elevation [22 ft]:") or 22.)                  #ft 
+    dest_pres = float(raw_input("Arrival airport pressure setting [29.92 in Hg]:") or 29.92) #in. Hg
+    dest_temp = int(raw_input("Departure airport temperature [15 C]:") or 15.)               #Celsius
 
     calc_quantities(lapse_rate,weight, dep_elev, dep_pres, dep_temp, cruise_alt, cruise_temp, RPM, dest_elev, dest_pres, dest_temp)
 
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
