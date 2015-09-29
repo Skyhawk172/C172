@@ -353,25 +353,44 @@ def main(argv):
     lapse_rate = 2.   #deg. per 1000 ft
     weight     = 2550 #lbs
 
-    #DEPARTURE:
-    dep_elev =   int(raw_input("Departure airport elevation [22 ft]:") or 22.)                #ft
-    dep_pres = float(raw_input("Departure airport pressure setting [29.92 in Hg]:") or 29.92) #in. Hg
-    dep_temp =   int(raw_input("Departure airport temperature [15 C]:") or 15.)               #Celsius
+    # DEFAULT STARTING VALUES:
+    dep_elev  = 22
+    dep_pres  = 29.92
+    dep_temp  = 15
+    
+    dest_elev = 22
+    dest_pres = 29.92
+    dest_temp = 15
+
+    cruise_alt = 3000
+    cruise_temp= 9
+    RPM        =2300
 
 
-    #ARRIVAL:
-    dest_elev = int(raw_input("Arrival airport elevation [22 ft]:") or 22.)                  #ft 
-    dest_pres = float(raw_input("Arrival airport pressure setting [29.92 in Hg]:") or 29.92) #in. Hg
-    dest_temp = int(raw_input("Departure airport temperature [15 C]:") or 15.)               #Celsius
+    key=''
+    while key != 'q':
+        #DEPARTURE:
+        dep_elev =   int(raw_input("Departure airport elevation [%d ft]: " %dep_elev) or dep_elev)            #ft
+        dep_pres = float(raw_input("Departure airport pressure setting [%5.2f in Hg]: " %dep_pres) or dep_pres) #in. Hg
+        dep_temp =   int(raw_input("Departure airport temperature [%d C]: " %dep_temp) or dep_temp)           #Celsius
 
 
-    #CRUISE:
-    cruise_alt = int(raw_input("Cruise altitude [3000 ft]:") or 3000)             # ft MSL
-    cruise_temp= int(raw_input("Cruise altitude temperature [9 Celsius]:") or 9)  # Celsius
-    RPM        = int(raw_input("Cruise RPM [2300]:") or 2300)                     #RPM
+        #ARRIVAL:
+        dest_elev = int(raw_input("Arrival airport elevation [%d ft]: " %dest_elev) or dest_elev)           #ft 
+        dest_pres = float(raw_input("Arrival airport pressure setting [%5.2f in Hg]: " %dest_pres) or dest_pres) #in. Hg
+        dest_temp = int(raw_input("Departure airport temperature [%d C]: " %dest_temp) or dest_temp)         #Celsius
 
 
-    calc_quantities(lapse_rate,weight, dep_elev, dep_pres, dep_temp, cruise_alt, cruise_temp, RPM, dest_elev, dest_pres, dest_temp)
+        #CRUISE:
+        cruise_alt = int(raw_input("Cruise altitude [%d ft]: " %cruise_alt) or 3000)             # ft MSL
+        cruise_temp= int(raw_input("Cruise altitude temperature [%d C]: " %cruise_temp) or 9)  # Celsius
+        RPM        = int(raw_input("Cruise RPM [%d]: " %RPM) or 2300)                     #RPM
+
+        calc_quantities(lapse_rate,weight, dep_elev, dep_pres, dep_temp, cruise_alt, cruise_temp, RPM, dest_elev, dest_pres, dest_temp)
+
+        key=raw_input("[q] Quit [r] Run again: ") or 'r'
+
+
 
 
 
