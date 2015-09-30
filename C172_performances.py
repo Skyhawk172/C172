@@ -502,11 +502,73 @@ class Cruise():
         self.av_temp=np.average([a1.temp,a2.temp])
         self.av_std_temp=np.average([a1.std_temp,a2.std_temp])
 
-        self.alt = int(raw_input("Cruise altitude [3000 ft]: ") or 3000)             # ft MSL
-        self.temp= int(raw_input("Cruise altitude temperature [9 C]: ") or 9)  # Celsius
-        self.RPM        = int(raw_input("Cruise RPM [2300]: ") or 2300)                     #RPM
-        self.total_dist=distance(a1,a2)
+        self.alt=-1
+        while self.alt<0 or self.alt>8000:
+            self.alt = int(raw_input("Cruise altitude [3000 ft]: ") or 3000)       # ft MSL
+#        self.temp= int(raw_input("Cruise altitude temperature [9 C]: ") or 9)  # Celsius
+        self.station=raw_input("Winds aloft station [EMI]: ") or "EMI"
+        self.RPM = int(raw_input("Cruise RPM [2300]: ") or 2300)              #RPM
 
+        self.total_dist=distance(a1,a2)
+        self.truecourse=np.round( np.arctan2( (a2.long-a1.long),(a2.lat-a1.lat) )*180/np.pi )
+        self.truecourse=self.truecourse if self.truecourse>=0. else self.truecourse+360.
+        
+
+
+    def winds_aloft(self,airport):
+        try:
+            url = "http://www.srh.noaa.gov/data/WNO/FD1US1"
+            def_alt=np.array([3000, 6000, 9000, 12000, 18000, 24000, 30000, 34000, 39000])
+            winds    =[]
+            for line in urllib2.urlopen(url):
+                winds.append(line)
+
+            data = filter(lambda x: self.station in x, winds)[0].split()
+            data.remove(self.station)
+            print data
+
+            winds_dir=[None]*len(data)
+            winds_vel=[None]*len(data)
+            winds_tem=[None]*len(data)
+            winds_alt=def_alt[len(def_alt)-len(data):]
+            for i in xrange(len(data)-1,-1,-1):
+                winds_dir[i]=(float(data[i][:2])*10 if int(data[i][:2])!=99 else 0.)*np.pi/180.
+                winds_vel[i]=float(data[i][2:4])
+                if winds_alt[i]>24000: 
+                    winds_tem[i]=-float(data[i][-2:])
+                else: winds_tem[i]=float(data[i][-3:])
+                if winds_alt[i]==3000: winds_tem[i]= np.average([airport.temp,winds_tem[i+1]])
+
+            winds_dir=np.unwrap(winds_dir)*180/np.pi
+            self.WD = np.interp(self.alt, winds_alt, winds_dir) 
+            if self.WD<0.: self.WD+=360.
+            self.WS = np.interp(self.alt, winds_alt, winds_vel)
+            self.temp = np.interp(self.alt, winds_alt, winds_tem)
+        except:
+            self.WS = float(raw_input("Wind velocity at %d ft: " %self.alt) or 0.)
+            self.WD = float(raw_input("Wind direction at %d ft: "%self.alt) or 0.)* np.pi/180.
+            self.temp= int(raw_input("Cruise temperature [9 C]: ") or 9)  # Celsius
+
+        print "Winds aloft %d ft: %d/%d%+d" %(self.alt,int(self.WD), int(self.WS), int(self.temp))
+
+    def calc_wca(self,airport):
+        CRS= self.truecourse *np.pi/180. 
+        WD = self.WD *np.pi/180. 
+        WS = self.WS
+
+        SWC=(WS/self.ktas)*np.sin(WD-CRS)
+        if abs(SWC)>1:
+            print "course cannot be flown-- wind too strong"
+        else:
+            HD=CRS + np.arcsin(SWC)
+            if HD<0: HD=HD+2*np.pi
+            if (HD>2*np.pi): HD=HD-2*np.pi
+            self.GS=self.ktas*np.sqrt(1.-SWC**2) - WS*np.cos(WD-CRS)
+            if (self.GS < 0):  "course cannot be flown-- wind too strong"
+        self.trueheading = HD*180/np.pi
+        self.wca=(HD-CRS)*180/np.pi
+        
+    
     def calc(self):
         self.pres_alt = self.alt - (self.av_pres - 29.92)*1000 
         self.std_temp = 15 - (self.alt/1000. * a1.lapse_rate)
@@ -523,15 +585,15 @@ class Cruise():
 
 
 def display_all(a1,a2,c1):
-    print "\033c" #clear screen
-    print "---------------------------------"
+#    print "\033c" #clear screen
+    print "---------------------------------------------------"
     print "DEPARTURE %s (%d ft):" %(a1.id.upper(),a1.elev)
     for p in a1.metar: print p,
     print "\nPressure alt.:",a1.pres_alt,"ft"
     print "Density alt. :",a1.dens_alt,"ft\n"
 
     print "CRUISE (%d lbs):" %a1.weight
-    print c1.alt,"ft, ",c1.temp,"C, ",c1.RPM,"RPM"
+    print c1.alt,"ft, ",c1.RPM,"RPM, Winds:","%03d/%d%+d" %(c1.WD, c1.WS, c1.temp)
     print "Pressure alt.:",c1.pres_alt,"ft"
     print "Delta T_std: %+d" %c1.deltaT_std
     print "Density alt. :", c1.dens_alt,"ft\n"
@@ -539,11 +601,8 @@ def display_all(a1,a2,c1):
     print "ARRIVAL %s (%d ft):" %(a2.id.upper(),a2.elev)
     for p in a2.metar: print p,
     print "\nPressure alt.:",a2.pres_alt,"ft"
-    print "Density alt. :",a2.dens_alt,"ft\n"
-
-    print "Total distance: %d NM" %c1.total_dist
-    print "---------------------------------"
-
+    print "Density alt. :",a2.dens_alt,"ft"
+    print "---------------------------------------------------"
 
     print 'GRD ROLL    : %d ft'   %a1.roll
     print 'GRD CLR 50FT: %d ft\n' %a1.clear50ft
@@ -560,7 +619,11 @@ def display_all(a1,a2,c1):
     print 'LDG GRD ROLL: %d ft'   %a2.ldg_roll
     print 'LDG CLR 50FT: %d ft\n' %a2.ldg_clear50ft
 
-
+    print "Total distance: %d NM" %(c1.total_dist)
+    print 'True course   : %d deg' %np.round(c1.truecourse)
+    print 'Wind angle    : %+d deg' %np.round(c1.wca)
+    print 'True heading  : %d deg' %np.round(c1.trueheading)
+    print 'Ground speed  : %d KTS' %np.round(c1.GS)
 
 if __name__ == '__main__':
 
@@ -584,8 +647,12 @@ if __name__ == '__main__':
         a2.landing()
 
         c1=Cruise(a1,a2)
+        c1.winds_aloft(a1)
         c1.calc()
         c1.climb()
         c1.cruise()
+        c1.calc_wca(a1)
         
         display_all(a1,a2,c1)
+
+
