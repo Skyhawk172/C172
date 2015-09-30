@@ -178,7 +178,11 @@ def climb(cruise_alt,cruise_pres_alt,dep_pres_alt,cruise_temp, cruise_std_temp,d
                             [5000, 550,  8, 1.9, 10],
                             [6000, 505, 10, 2.2, 13],
                             [7000, 455, 12, 2.6, 16],
-                            [8000, 410, 14, 3.0, 19] ])
+                            [8000, 410, 14, 3.0, 19],
+                            [9000, 360, 17, 3.4, 22],
+                            [10000,315, 20, 3.9, 27],
+                            [11000,265, 24, 4.4, 32],
+                            [12000,220, 28, 5.0, 38] ])
 
     climb_fpm = np.interp(cruise_pres_alt, table_time[:,0], table_time[:,1])
     climb_time= np.interp(cruise_pres_alt, table_time[:,0], table_time[:,2])
@@ -329,9 +333,7 @@ def cruise(RPM,cruise_pres_alt,deltaT_std):
     xrpm = np.arange(2000., np.max(dict_RPM[RPM][0,:,0])+1, 2000)
     yrpm = np.arange(-20.,   21,   20)
 
-
     if cruise_pres_alt <= np.max(xrpm):
-
         z1 = np.asarray([dict_RPM[RPM][i,:,2] for i in xrange(3)]) 
         z2 = np.asarray([dict_RPM[RPM][i,:,3] for i in xrange(3)]) 
         z3 = np.asarray([dict_RPM[RPM][i,:,4] for i in xrange(3)]) 
@@ -339,7 +341,9 @@ def cruise(RPM,cruise_pres_alt,deltaT_std):
         f2 = interpolate.interp2d(xrpm,yrpm,z2, kind='linear')
         f3 = interpolate.interp2d(xrpm,yrpm,z3, kind='linear')
 
-    else: print "no data for RPM and altitude"
+    else: 
+        print "no data for %s RPM at %d ft" %(RPM, cruise_pres_alt)
+        sys.exit()
 
     return f1(cruise_pres_alt,deltaT_std)[0], f2(cruise_pres_alt,deltaT_std)[0], f3(cruise_pres_alt,deltaT_std)[0]
 
@@ -503,10 +507,10 @@ class Cruise():
         self.av_std_temp=np.average([a1.std_temp,a2.std_temp])
 
         self.alt=-1
-        while self.alt<0 or self.alt>8000:
+        while self.alt<0 or self.alt>12000:
             self.alt = int(raw_input("Cruise altitude [3000 ft]: ") or 3000)       # ft MSL
 #        self.temp= int(raw_input("Cruise altitude temperature [9 C]: ") or 9)  # Celsius
-        self.station=raw_input("Winds aloft station [EMI]: ") or "EMI"
+        self.station=(raw_input("Winds aloft station [EMI]: ") or "EMI").upper()
         self.RPM = int(raw_input("Cruise RPM [2300]: ") or 2300)              #RPM
 
         self.total_dist=distance(a1,a2)
@@ -566,8 +570,8 @@ class Cruise():
             self.GS=self.ktas*np.sqrt(1.-SWC**2) - WS*np.cos(WD-CRS)
             if (self.GS < 0):  "course cannot be flown-- wind too strong"
         self.trueheading = HD*180/np.pi
-        self.wca=(HD-CRS)*180/np.pi
-        
+        angles=np.unwrap([HD,CRS])
+        self.wca         =(angles[0]-angles[1])*180/np.pi #(HD-CRS)*180/np.pi
     
     def calc(self):
         self.pres_alt = self.alt - (self.av_pres - 29.92)*1000 
@@ -623,7 +627,20 @@ def display_all(a1,a2,c1):
     print 'True course   : %d deg' %np.round(c1.truecourse)
     print 'Wind angle    : %+d deg' %np.round(c1.wca)
     print 'True heading  : %d deg' %np.round(c1.trueheading)
-    print 'Ground speed  : %d KTS' %np.round(c1.GS)
+    print 'Ground speed  : %d KTS\n' %np.round(c1.GS)
+    
+    print 'FUEL REQUIREMENTS:'
+    cruise_time = (c1.total_dist-c1.dist)/c1.GS
+    print 'Taxi/Run-up/Takeoff : %5.2f'    %1.4
+    print 'Climb to %d ft    : %5.2f gal.' %(c1.alt,c1.fuel)
+    print 'Cruise at %d ft   : %5.2f gal.' %(c1.alt,cruise_time*c1.gph)
+    print 'Descent from %d ft: %5.2f gal.' %(c1.alt,1.4)
+    print 'VFR reserve         : %5.2f gal.' %(c1.gph)
+    print "--------------------------------"
+    print 'TOTAL FUEL          : %5.2f gal.' %(1.4+c1.fuel+cruise_time*c1.gph+1.4+c1.gph)
+    print "--------------------------------"
+
+
 
 if __name__ == '__main__':
 
