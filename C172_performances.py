@@ -23,7 +23,7 @@ def calc_quantities(lapse_rate,weight, dep_elev, dep_pres, dep_temp, cruise_alt,
 
     print "\033c" #clear screen
     print "---------------------------------"
-    print "DEPARTURE (%d lbs):" %weight
+    print "DEPARTURE (%d ft):" %dep_elev
     print dep_elev,"ft, ",dep_pres,"in. Hg, ",dep_temp,"C" 
     print "Pressure alt.:",dep_pres_alt,"ft"
     print "Density alt. :",dep_dens_alt,"ft\n"
@@ -34,7 +34,7 @@ def calc_quantities(lapse_rate,weight, dep_elev, dep_pres, dep_temp, cruise_alt,
     print "Delta T_std: %+d" %deltaT_std
     print "Density alt. :", cruise_dens_alt,"ft\n"
 
-    print "ARRIVAL (%d lbs):" %weight
+    print "ARRIVAL (%d ft):" %dest_elev
     print dest_elev,"ft, ",dest_pres,"in. Hg, ",dest_temp,"C" 
     print "Pressure alt.:",dest_pres_alt,"ft"
     print "Density alt. :",dest_dens_alt,"ft"
@@ -43,7 +43,7 @@ def calc_quantities(lapse_rate,weight, dep_elev, dep_pres, dep_temp, cruise_alt,
     roll, clear50ft = takeoff(dep_pres_alt,dep_temp)
     fpm, time, dist, fuel = climb(cruise_alt,cruise_pres_alt,dep_pres_alt,cruise_temp, cruise_std_temp,dep_temp, dep_std_temp)
     mcp, ktas, gph = cruise(RPM,cruise_pres_alt,deltaT_std)
-    ldg_roll, ldg_clear50ft = landing(dest_pres,dest_temp)
+    ldg_roll, ldg_clear50ft = landing(dest_pres_alt,dest_temp)
 
     print 'GRD ROLL    : %d ft'   %roll
     print 'GRD CLR 50FT: %d ft\n' %clear50ft
@@ -61,8 +61,50 @@ def calc_quantities(lapse_rate,weight, dep_elev, dep_pres, dep_temp, cruise_alt,
     print 'LDG CLR 50FT: %d ft\n' %ldg_clear50ft
 
 
+def manual_inputs():
 
-def takeoff(dep_pres_alt,dep_temp):
+    lapse_rate = 2.   #deg. per 1000 ft
+    weight     = 2550 #lbs
+
+    #DEFAULT STARTING VALUES:
+    depart    ="KMTN"
+    dep_elev  = 22
+    dep_pres  = 29.92
+    dep_temp  = 15
+    
+    destin    ="KMTN"
+    dest_elev = 22
+    dest_pres = 29.92
+    dest_temp = 15
+
+    cruise_alt = 3000
+    cruise_temp= 9
+    RPM        = 2300
+
+    key=''
+    while key != 'q':
+        #DEPARTURE:
+        dep_elev =   int(raw_input("Departure airport elevation [%d ft]: " %dep_elev) or dep_elev)            #ft
+        dep_pres = float(raw_input("Departure airport pressure setting [%5.2f in Hg]: " %dep_pres) or dep_pres) #in. Hg
+        dep_temp =   int(raw_input("Departure airport temperature [%d C]: " %dep_temp) or dep_temp)           #Celsius
+
+        #ARRIVAL:
+        dest_elev = int(raw_input("Arrival airport elevation [%d ft]: " %dest_elev) or dest_elev)           #ft 
+        dest_pres = float(raw_input("Arrival airport pressure setting [%5.2f in Hg]: " %dest_pres) or dest_pres) #in. Hg
+        dest_temp = int(raw_input("Departure airport temperature [%d C]: " %dest_temp) or dest_temp)         #Celsius
+
+        #CRUISE:
+        cruise_alt = int(raw_input("Cruise altitude [%d ft]: " %cruise_alt) or 3000)             # ft MSL
+        cruise_temp= int(raw_input("Cruise altitude temperature [%d C]: " %cruise_temp) or 9)  # Celsius
+        RPM        = int(raw_input("Cruise RPM [%d]: " %RPM) or 2300)                     #RPM
+            
+        calc_quantities(lapse_rate,weight, dep_elev, dep_pres, dep_temp, cruise_alt, cruise_temp, RPM, dest_elev, dest_pres, dest_temp)
+        key=raw_input("[q] Quit [Enter] Run again: ") or 'r'
+
+
+
+
+def takeoff(pres_alt, temp):
     table_tkoff= np.array([ [ 
                         [   0, 0,  860, 1465],
                         [1000, 0,  940, 1600],
@@ -123,7 +165,8 @@ def takeoff(dep_pres_alt,dep_temp):
     f1 = interpolate.interp2d(x,y,z1, kind='linear')
     f2 = interpolate.interp2d(x,y,z2, kind='linear')
 
-    return f1(dep_pres_alt,dep_temp)[0], f2(dep_pres_alt,dep_temp)[0]
+    pres_alt = pres_alt if pres_alt>=0. else 0.
+    return f1(pres_alt, temp)[0], f2(pres_alt, temp)[0]
 
 
 def climb(cruise_alt,cruise_pres_alt,dep_pres_alt,cruise_temp, cruise_std_temp,dep_temp, dep_std_temp):
@@ -142,6 +185,7 @@ def climb(cruise_alt,cruise_pres_alt,dep_pres_alt,cruise_temp, cruise_std_temp,d
     climb_fuel= np.interp(cruise_pres_alt, table_time[:,0], table_time[:,3])
     climb_dist= np.interp(cruise_pres_alt, table_time[:,0], table_time[:,4])
 
+    dep_pres_alt = dep_pres_alt if dep_pres_alt>=0. else 0.
     start_fpm = np.interp(dep_pres_alt, table_time[:,0], table_time[:,1])
     start_time= np.interp(dep_pres_alt, table_time[:,0], table_time[:,2])
     start_fuel= np.interp(dep_pres_alt, table_time[:,0], table_time[:,3])
@@ -301,7 +345,7 @@ def cruise(RPM,cruise_pres_alt,deltaT_std):
 
 
 
-def landing(dest_pres,dest_temp):
+def landing(pres_alt, temp):
     table_ldg= np.array([ [ [   0, 0,  545, 1290],
                             [1000, 0,  565, 1320],
                             [2000, 0,  585, 1355],
@@ -360,67 +404,38 @@ def landing(dest_pres,dest_temp):
     f1 = interpolate.interp2d(x,y,z1, kind='linear')
     f2 = interpolate.interp2d(x,y,z2, kind='linear')
 
-    return f1(dest_pres,dest_temp)[0], f2(dest_pres,dest_temp)[0]
+    pres_alt = pres_alt if pres_alt>=0 else 0.
+    return f1(pres_alt,temp)[0], f2(pres_alt, temp)[0]
 
 
-def manual_inputs():
+def manual_weather(id):
+    print "Error or no connection, please enter values manually \n"
 
-    lapse_rate = 2.   #deg. per 1000 ft
-    weight     = 2550 #lbs
-
-    #DEFAULT STARTING VALUES:
-    depart    ="KMTN"
-    dep_elev  = 22
-    dep_pres  = 29.92
-    dep_temp  = 15
-    
-    destin    ="KMTN"
-    dest_elev = 22
-    dest_pres = 29.92
-    dest_temp = 15
-
-    cruise_alt = 3000
-    cruise_temp= 9
-    RPM        = 2300
-
-    key=''
-    while key != 'q':
-        #DEPARTURE:
-        dep_elev =   int(raw_input("Departure airport elevation [%d ft]: " %dep_elev) or dep_elev)            #ft
-        dep_pres = float(raw_input("Departure airport pressure setting [%5.2f in Hg]: " %dep_pres) or dep_pres) #in. Hg
-        dep_temp =   int(raw_input("Departure airport temperature [%d C]: " %dep_temp) or dep_temp)           #Celsius
-
-        #ARRIVAL:
-        dest_elev = int(raw_input("Arrival airport elevation [%d ft]: " %dest_elev) or dest_elev)           #ft 
-        dest_pres = float(raw_input("Arrival airport pressure setting [%5.2f in Hg]: " %dest_pres) or dest_pres) #in. Hg
-        dest_temp = int(raw_input("Departure airport temperature [%d C]: " %dest_temp) or dest_temp)         #Celsius
-
-        #CRUISE:
-        cruise_alt = int(raw_input("Cruise altitude [%d ft]: " %cruise_alt) or 3000)             # ft MSL
-        cruise_temp= int(raw_input("Cruise altitude temperature [%d C]: " %cruise_temp) or 9)  # Celsius
-        RPM        = int(raw_input("Cruise RPM [%d]: " %RPM) or 2300)                     #RPM
-            
-        calc_quantities(lapse_rate,weight, dep_elev, dep_pres, dep_temp, cruise_alt, cruise_temp, RPM, dest_elev, dest_pres, dest_temp)
-        key=raw_input("[q] Quit [Enter] Run again: ") or 'r'
-
+    #elev =   int(raw_input("%s elevation [0 ft]: " %id.upper()) or 0)            #ft
+    pres = float(raw_input("%s pressure setting [29.92 in Hg]: " %id.upper()) or 29.92) #in. Hg
+    temp =   int(raw_input("%s temperature [15 C]: " %id.upper()) or 15)           #Celsius
+    return  pres, temp, [str(pres),"in Hg,  ",str(temp),"C"]
 
 
 def auto_weather(tag, id):
     id = id.title()
+    if id[0]!="K": id="K"+id
     if tag==1: print "Connecting to aviationweather.gov/adds"
     url = "http://www.aviationweather.gov/adds/metars?station_ids="\
           +id+"&std_trans=standard&chk_metars=on&hoursStr=most+recent+only&submitmet=Submit"
     page = urllib2.urlopen(url).read()
-
     metar = page.split(id.upper())[1]
     metar = re.sub('<[^<]+?>', '', metar)
     metar = metar.split()
+    print id.upper(),
+    for p in metar: print p,
+    print
     try: 
         idx=metar.index("RMK")
         metar = metar[:idx]
     except: pass
-
     timez=metar[0]
+    if metar[1]=='AUTO': del metar[1]
     winds=metar[1]
     viz  =metar[2]
     if "VV" in metar[3] or "FT" in metar[3]: 
@@ -430,19 +445,9 @@ def auto_weather(tag, id):
     tempdew= metar[-2]
     altset = metar[-1]
     pres = float(altset[-4:])/100.
-    temp = int(tempdew[:2])
-
-    return pres, temp, metar
-
-
-def manual_weather(id):
-    print "No connection, please enter values manually \n"
-
-    elev =   int(raw_input("%s elevation [0 ft]: " %id.upper()) or 0)            #ft
-    pres = float(raw_input("%s pressure setting [29.92 in Hg]: " %id.upper()) or 29.92) #in. Hg
-    temp =   int(raw_input("%s temperature [15 C]: " %id.upper()) or 15)           #Celsius
-
-    return elev, pres, temp
+    temp = tempdew.split("/")[0]
+    if temp[0] == 'M': temp="-"+temp[1:]
+    return pres, int(temp), metar
 
 
 def auto_airport_info(tag, id):
@@ -475,10 +480,9 @@ class Airport():
         self.id = id
 
         #url retrieve airport infor & weather
-        try: 
-            self.elev, self.lat, self.long = auto_airport_info(self.tag, self.id)
-            self.pres, self.temp, self.metar  = auto_weather(self.tag,self.id)
-        except: self.elev, self.pres, self.temp = manual_weather(self.id)
+        self.elev, self.lat, self.long   = auto_airport_info(self.tag, self.id)
+        try:    self.pres, self.temp, self.metar = auto_weather(self.tag,self.id)
+        except: self.pres, self.temp, self.metar = manual_weather(self.id)
 
     def calc(self):
         self.pres_alt = self.elev   - (self.pres - 29.92)*1000 
@@ -521,9 +525,9 @@ class Cruise():
 def display_all(a1,a2,c1):
     print "\033c" #clear screen
     print "---------------------------------"
-    print "DEPARTURE %s (%d lbs):" %(a1.id.upper(),a1.weight)
-    print a1.elev,"ft, ",a1.pres,"in. Hg, ",a1.temp,"C" 
-    print "Pressure alt.:",a1.pres_alt,"ft"
+    print "DEPARTURE %s (%d ft):" %(a1.id.upper(),a1.elev)
+    for p in a1.metar: print p,
+    print "\nPressure alt.:",a1.pres_alt,"ft"
     print "Density alt. :",a1.dens_alt,"ft\n"
 
     print "CRUISE (%d lbs):" %a1.weight
@@ -532,9 +536,9 @@ def display_all(a1,a2,c1):
     print "Delta T_std: %+d" %c1.deltaT_std
     print "Density alt. :", c1.dens_alt,"ft\n"
 
-    print "ARRIVAL %s (%d lbs):" %(a2.id.upper(),a2.weight)
-    print a2.elev,"ft, ",a2.pres,"in. Hg, ",a2.temp,"C" 
-    print "Pressure alt.:",a2.pres_alt,"ft"
+    print "ARRIVAL %s (%d ft):" %(a2.id.upper(),a2.elev)
+    for p in a2.metar: print p,
+    print "\nPressure alt.:",a2.pres_alt,"ft"
     print "Density alt. :",a2.dens_alt,"ft\n"
 
     print "Total distance: %d NM" %c1.total_dist
