@@ -195,9 +195,20 @@ def climb(cruise_alt,cruise_pres_alt,dep_pres_alt,cruise_temp, cruise_std_temp,d
     start_fuel= np.interp(dep_pres_alt, table_time[:,0], table_time[:,3])
     start_dist= np.interp(dep_pres_alt, table_time[:,0], table_time[:,4])
 
-    total_climb_time = climb_time*(1 + (cruise_temp-cruise_std_temp)/100) - start_time* (1 + (dep_temp-dep_std_temp)/100)
-    total_climb_dist = climb_dist* (1 + (cruise_temp-cruise_std_temp)/100) - start_dist* (1 + (dep_temp-dep_std_temp)/100)
-    total_climb_fuel = climb_fuel* (1 + (cruise_temp-cruise_std_temp)/100) - start_fuel* (1 + (dep_temp-dep_std_temp)/100)
+    deltaTc= cruise_temp - cruise_std_temp
+    deltaTd= dep_temp    - dep_std_temp
+    if deltaTc>0: 
+        climb_time *= (1. + (cruise_temp-cruise_std_temp)/100.) 
+        climb_dist *= (1. + (cruise_temp-cruise_std_temp)/100.) 
+        climb_fuel *= (1. + (cruise_temp-cruise_std_temp)/100.) 
+    if deltaTd>0:
+        start_time *= (1. + (dep_temp-dep_std_temp)/100.)
+        start_dist *= (1. + (dep_temp-dep_std_temp)/100.)
+        start_fuel *= (1. + (dep_temp-dep_std_temp)/100.)
+
+    total_climb_time = climb_time - start_time
+    total_climb_dist = climb_dist - start_dist
+    total_climb_fuel = climb_fuel - start_fuel
 
     return climb_fpm, total_climb_time, total_climb_dist, total_climb_fuel
 
@@ -423,11 +434,12 @@ def manual_weather(id):
 
 def auto_weather(tag, id):
     id = id.title()
-    if id[0]!="K": id="K"+id
+    if id[0]!="K" and id[0]!="C": id="K"+id
     if tag==1: print "Connecting to aviationweather.gov/adds"
     url = "http://www.aviationweather.gov/adds/metars?station_ids="\
           +id+"&std_trans=standard&chk_metars=on&hoursStr=most+recent+only&submitmet=Submit"
     page = urllib2.urlopen(url).read()
+
     metar = page.split(id.upper())[1]
     metar = re.sub('<[^<]+?>', '', metar)
     metar = metar.split()
@@ -460,7 +472,10 @@ def auto_airport_info(tag, id):
     with open('airports.csv', 'rb') as f:
         reader = csv.reader(f)
         airports = list(reader)
-    line = filter(lambda x: id.upper() in x, airports)[0]
+    try: line = filter(lambda x: id.upper() in x, airports)[0]
+    except: 
+        print 'No airport %s found.' %id.upper()
+        sys.exit()
     latit, longit, elev = float(line[4]),float(line[5]),int(line[6])
     return elev, latit, longit
 
@@ -509,9 +524,10 @@ class Cruise():
         self.alt=-1
         while self.alt<0 or self.alt>12000:
             self.alt = int(raw_input("Cruise altitude [3000 ft]: ") or 3000)       # ft MSL
-#        self.temp= int(raw_input("Cruise altitude temperature [9 C]: ") or 9)  # Celsius
-        self.station=(raw_input("Winds aloft station [EMI]: ") or "EMI").upper()
+        #self.temp= int(raw_input("Cruise altitude temperature [9 C]: ") or 9)  # Celsius
         self.RPM = int(raw_input("Cruise RPM [2300]: ") or 2300)              #RPM
+        self.station=(raw_input("Winds aloft station [EMI]: ") or "EMI").upper()
+
 
         self.total_dist=distance(a1,a2)
         self.truecourse=np.round( np.arctan2( (a2.long-a1.long),(a2.lat-a1.lat) )*180/np.pi )
@@ -543,14 +559,15 @@ class Cruise():
                 else: winds_tem[i]=float(data[i][-3:])
                 if winds_alt[i]==3000: winds_tem[i]= np.average([airport.temp,winds_tem[i+1]])
 
-            winds_dir=np.unwrap(winds_dir)*180/np.pi
-            self.WD = np.interp(self.alt, winds_alt, winds_dir) 
-            if self.WD<0.: self.WD+=360.
-            self.WS = np.interp(self.alt, winds_alt, winds_vel)
+            winds_dir = np.unwrap(winds_dir)*180/np.pi
+            self.WS   = np.interp(self.alt, winds_alt, winds_vel)
             self.temp = np.interp(self.alt, winds_alt, winds_tem)
+            self.WD   = np.round( np.interp(self.alt, winds_alt, winds_dir) )
+            if self.WD<0.: self.WD+=360.
         except:
-            self.WS = float(raw_input("Wind velocity at %d ft: " %self.alt) or 0.)
-            self.WD = float(raw_input("Wind direction at %d ft: "%self.alt) or 0.)* np.pi/180.
+            print "No winds aloft for %s" %self.station
+            self.WS = float(raw_input("Wind velocity at %d ft [0 KTS] : " %self.alt) or 0.)
+            self.WD = float(raw_input("Wind direction at %d ft [0 deg]: "%self.alt) or 0.)* np.pi/180.
             self.temp= int(raw_input("Cruise temperature [9 C]: ") or 9)  # Celsius
 
         print "Winds aloft %d ft: %d/%d%+d" %(self.alt,int(self.WD), int(self.WS), int(self.temp))
@@ -589,7 +606,7 @@ class Cruise():
 
 
 def display_all(a1,a2,c1):
-#    print "\033c" #clear screen
+    #print "\033c" #clear screen
     print "---------------------------------------------------"
     print "DEPARTURE %s (%d ft):" %(a1.id.upper(),a1.elev)
     for p in a1.metar: print p,
@@ -623,18 +640,19 @@ def display_all(a1,a2,c1):
     print 'LDG GRD ROLL: %d ft'   %a2.ldg_roll
     print 'LDG CLR 50FT: %d ft\n' %a2.ldg_clear50ft
 
-    print "Total distance: %d NM" %(c1.total_dist)
-    print 'True course   : %d deg' %np.round(c1.truecourse)
-    print 'Wind angle    : %+d deg' %np.round(c1.wca)
-    print 'True heading  : %d deg' %np.round(c1.trueheading)
-    print 'Ground speed  : %d KTS\n' %np.round(c1.GS)
-    
+    print "Total distance: %d NM"    %(c1.total_dist)
+    print 'True course   : %d deg'   %np.round(c1.truecourse)
+    print 'Wind angle    : %+d deg'  %np.round(c1.wca)
+    print 'True heading  : %d deg'   %np.round(c1.trueheading)
+    print 'Ground speed  : %d KTS'   %np.round(c1.GS)
+    print 'Total time    : %4.2f hrs (%d min.)\n' %(c1.total_dist/c1.GS, c1.total_dist/c1.GS*60)
+
     print 'FUEL REQUIREMENTS:'
     cruise_time = (c1.total_dist-c1.dist)/c1.GS
-    print 'Taxi/Run-up/Takeoff : %5.2f'    %1.4
-    print 'Climb to %d ft    : %5.2f gal.' %(c1.alt,c1.fuel)
-    print 'Cruise at %d ft   : %5.2f gal.' %(c1.alt,cruise_time*c1.gph)
-    print 'Descent from %d ft: %5.2f gal.' %(c1.alt,1.4)
+    print 'Taxi/Run-up/Takeoff : %5.2f gal.'      %1.4
+    print 'Climb to %d ft    : %5.2f gal.'   %(c1.alt,c1.fuel)
+    print 'Cruise at %d ft   : %5.2f gal.'   %(c1.alt,cruise_time*c1.gph)
+    print 'Descent/Pattern/Taxi: %5.2f gal.'   %(1.4)
     print 'VFR reserve         : %5.2f gal.' %(c1.gph)
     print "--------------------------------"
     print 'TOTAL FUEL          : %5.2f gal.' %(1.4+c1.fuel+cruise_time*c1.gph+1.4+c1.gph)
@@ -653,7 +671,6 @@ if __name__ == '__main__':
         else:
             depart = raw_input("Departure airport: ") or "KMTN"
             destin = raw_input("Arrival airport: " ) or "KMTN"
-
 
         a1=Airport(1,depart)
         a2=Airport(2,destin)
