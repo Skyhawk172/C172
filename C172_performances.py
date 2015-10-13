@@ -1,7 +1,7 @@
 import numpy as np
 import scipy
 from scipy import interpolate
-import sys, csv
+import sys, csv, time
 import urllib2, re
 
 
@@ -526,7 +526,7 @@ class Cruise():
             self.alt = int(raw_input("Cruise altitude [3000 ft]: ") or 3000)       # ft MSL
         #self.temp= int(raw_input("Cruise altitude temperature [9 C]: ") or 9)  # Celsius
         self.RPM = int(raw_input("Cruise RPM [2300]: ") or 2300)              #RPM
-        self.station=(raw_input("Winds aloft station [EMI]: ") or "EMI").upper()
+        self.station=(raw_input("Winds aloft station for leg [EMI]: ") or "EMI").upper()
 
 
         self.total_dist=distance(a1,a2)
@@ -572,7 +572,7 @@ class Cruise():
 
         print "Winds aloft %d ft: %d/%d%+d" %(self.alt,int(self.WD), int(self.WS), int(self.temp))
 
-    def calc_wca(self,airport):
+    def calc_wca(self):
         CRS= self.truecourse *np.pi/180. 
         WD = self.WD *np.pi/180. 
         WS = self.WS
@@ -590,13 +590,13 @@ class Cruise():
         angles=np.unwrap([HD,CRS])
         self.wca         =(angles[0]-angles[1])*180/np.pi #(HD-CRS)*180/np.pi
     
-    def calc(self):
+    def calc(self, a1):
         self.pres_alt = self.alt - (self.av_pres - 29.92)*1000 
         self.std_temp = 15 - (self.alt/1000. * a1.lapse_rate)
         self.deltaT_std      = self.temp - self.std_temp
         self.dens_alt = self.pres_alt + 120*self.deltaT_std
 
-    def climb(self):
+    def climb(self, a1):
         self.fpm, self.time, self.dist, self.fuel = \
             climb(self.alt,self.pres_alt,a1.pres_alt,self.temp, self.std_temp,self.av_temp, self.av_std_temp)
 
@@ -606,6 +606,10 @@ class Cruise():
 
 
 def display_all(a1,a2,c1):
+#    saveout = sys.stdout
+#    fsock = open(a1.id.upper()+"_"+a2.id.upper()+time.strftime("%d-%m-%Y")+".txt", 'w')
+#    sys.stdout = fsock
+
     #print "\033c" #clear screen
     print "---------------------------------------------------"
     print "DEPARTURE %s (%d ft):" %(a1.id.upper(),a1.elev)
@@ -649,44 +653,157 @@ def display_all(a1,a2,c1):
 
     print 'FUEL REQUIREMENTS:'
     cruise_time = (c1.total_dist-c1.dist)/c1.GS
-    print 'Taxi/Run-up/Takeoff : %5.2f gal.'      %1.4
-    print 'Climb to %d ft    : %5.2f gal.'   %(c1.alt,c1.fuel)
-    print 'Cruise at %d ft   : %5.2f gal.'   %(c1.alt,cruise_time*c1.gph)
-    print 'Descent/Pattern/Taxi: %5.2f gal.'   %(1.4)
-    print 'VFR reserve         : %5.2f gal.' %(c1.gph)
+    total_fuel  = 1.4 + c1.fuel + cruise_time*c1.gph + 1.4 + c1.gph
+    print 'Taxi/Run-up/Takeoff : %5.2f gal.'      %(1.4)
+    print 'Climb to %d ft    : %5.2f gal.'        %(c1.alt,c1.fuel)
+    print 'Cruise at %d ft   : %5.2f gal.'        %(c1.alt,cruise_time*c1.gph)
+    print 'Descent/Pattern/Taxi: %5.2f gal.'      %(1.4)
+    print 'VFR reserve         : %5.2f gal.'      %(c1.gph)
     print "--------------------------------"
-    print 'TOTAL FUEL          : %5.2f gal.' %(1.4+c1.fuel+cruise_time*c1.gph+1.4+c1.gph)
+    print 'TOTAL FUEL          : %5.2f gal.'      %(total_fuel)
     print "--------------------------------"
+
+#    sys.stdout = saveout
+#    fsock.close()
+
+
+def display_all2(airports,cruiselegs):
+#    saveout = sys.stdout
+#    fsock = open(a1.id.upper()+"_"+a2.id.upper()+time.strftime("%d-%m-%Y")+".txt", 'w')
+#    sys.stdout = fsock
+
+    #print "\033c" #clear screen
+    print "---------------------------------------------------"
+    print "DEPARTURE %s (%d ft):" %(airports[0].id.upper(),airports[0].elev)
+    for p in airports[0].metar: print p,
+    print "\nPressure alt.:",airports[0].pres_alt,"ft"
+    print "Density alt. :",airports[0].dens_alt,"ft\n"
+
+    print 'GRD ROLL    : %d ft'   %airports[0].roll
+    print 'GRD CLR 50FT: %d ft' %airports[0].clear50ft
+
+    print "---------------------------------------------------"
+    print "ARRIVAL %s (%d ft):" %(airports[-1].id.upper(),airports[-1].elev)
+    for p in airports[-1].metar: print p,
+    print "\nPressure alt.:",airports[-1].pres_alt,"ft"
+    print "Density alt. :",airports[-1].dens_alt,"ft\n"
+
+    print 'LDG GRD ROLL: %d ft'   %airports[-1].ldg_roll
+    print 'LDG CLR 50FT: %d ft' %airports[-1].ldg_clear50ft
+    print "---------------------------------------------------"
+
+    print "CLIMB rate: %d fpm" %cruiselegs[0].fpm
+    print "CLIMB time: %5.2f min. (to %d ft)" %(cruiselegs[0].time,cruiselegs[0].alt)
+    print "CLIMB dist: %5.2f NM" %cruiselegs[0].dist
+    print "CLIMB fuel (incl. taxi):%5.2f gal." %(cruiselegs[0].fuel+1.4)
+    print "---------------------------------------------------"
+
+    ic = 1
+    for c in cruiselegs:
+        print "CRUISE LEG %d: %s --> %s" %(ic, airports[ic-1].id.upper(), airports[ic].id.upper())
+        print c.alt,"ft, ",c.RPM,"RPM, Winds:","%03d/%d%+d" %(c.WD, c.WS, c.temp)
+        print "Pressure alt.:",c.pres_alt,"ft"
+        print "Delta T_std: %+d" %c.deltaT_std
+        print "Density alt. :", c.dens_alt,"ft\n"
+
+        print 'CRUISE LEG %d %%MCP: %d'      %(ic, c.mcp)
+        print 'CRUISE LEG %d KTAS: %d'       %(ic, c.ktas)
+        print 'CRUISE LEG %d GPH : %5.2f \n' %(ic, c.gph)
+
+        print "Total distance: %d NM"    %(c.total_dist)
+        print 'True course   : %d deg'   %np.round(c.truecourse)
+        print 'Wind angle    : %+d deg'  %np.round(c.wca)
+        print 'True heading  : %d deg'   %np.round(c.trueheading)
+        print 'Ground speed  : %d KTS'   %np.round(c.GS)
+        print 'Total time    : %4.2f hrs (%d min.)' %(c.total_dist/c.GS, c.total_dist/c.GS*60)
+        print "---------------------------------------------------"
+        ic+=1
+
+    print 'FUEL REQUIREMENTS:'
+    print "---------------------------------------------------"
+    cruise_fuel = 0
+    for c in xrange(len(cruiselegs)):
+        if c==0: leg_time = (cruiselegs[c].total_dist-cruiselegs[c].dist)/cruiselegs[c].GS
+        else:    leg_time = cruiselegs[c].total_dist/cruiselegs[c].GS
+
+        cruise_fuel += leg_time*cruiselegs[c].gph
+
+    total_fuel = 1.4 + cruiselegs[0].fuel + cruise_fuel + 1.4 + cruiselegs[-1].gph
+    print 'Taxi/Run-up/Takeoff : %5.2f gal.'      %(1.4)
+    print 'Climb to %d ft    : %5.2f gal.'        %(cruiselegs[0].alt,cruiselegs[0].fuel)
+    print 'Total Cruise %d ft: %5.2f gal.'        %(cruiselegs[0].alt,cruise_fuel)
+    print 'Descent/Pattern/Taxi: %5.2f gal.'      %(1.4)
+    print 'VFR reserve         : %5.2f gal.'      %(cruiselegs[-1].gph)
+    print "--------------------------------"
+    print 'TOTAL FUEL          : %5.2f gal.'      %(total_fuel)
+    print "--------------------------------"
+
+
+
+#    sys.stdout = saveout
+#    fsock.close()
+
 
 
 
 if __name__ == '__main__':
 
+    checkpts=[]
     if len(sys.argv)==2 and sys.argv[1]=="-m": 
         manual_inputs()
     else:
-        if len(sys.argv)==3:
-            depart = sys.argv[1].lower().title()
-            destin = sys.argv[2].lower().title()
+        if len(sys.argv)>=3:
+            for i in xrange(1,len(sys.argv)):
+                checkpts.append(sys.argv[i].lower().title())
+            #depart = sys.argv[1].lower().title()
+            #destin = sys.argv[2].lower().title()
         else:
             depart = raw_input("Departure airport: ") or "KMTN"
             destin = raw_input("Arrival airport: " ) or "KMTN"
 
-        a1=Airport(1,depart)
-        a2=Airport(2,destin)
 
-        a1.calc()
-        a1.takeoff()
-        a2.calc()
-        a2.landing()
+        airports=[]
+        for i in xrange(len(checkpts)):
+            airports.append(Airport(i+1,checkpts[i]))
+            airports[i].calc()
 
-        c1=Cruise(a1,a2)
-        c1.winds_aloft(a1)
-        c1.calc()
-        c1.climb()
-        c1.cruise()
-        c1.calc_wca(a1)
+        airports[0].takeoff()
+        airports[-1].landing()
+
+        cruiselegs=[]
+        for i in xrange(len(airports)-1):
+            cruiselegs.append(Cruise(airports[i],airports[i+1]))
+            cruiselegs[i].winds_aloft(airports[i])
+            cruiselegs[i].calc(airports[i])
+
+
+        cruiselegs[0].climb(airports[0])
+        cruiselegs[0].cruise()
+        cruiselegs[0].calc_wca()
+        for c in xrange(1,len(cruiselegs)):
+            cruiselegs[c].cruise()
+            cruiselegs[c].calc_wca()
+
+        display_all2(airports, cruiselegs)
+
+
+        #display_all(airports[1],airports[2],cruiselegs[1])
+
+#        a1=Airport(1,depart)
+#        a2=Airport(2,destin)
+
+#        a1.calc()
+#        a1.takeoff()
+#        a2.calc()
+#        a2.landing()
+
+#        c1=Cruise(a1,a2)
+#        c1.winds_aloft(a1)
+#        c1.calc(a1)
+#        c1.climb(a1)
+#        c1.cruise()
+#        c1.calc_wca()
         
-        display_all(a1,a2,c1)
+#        display_all(a1,a2,c1)
 
 
