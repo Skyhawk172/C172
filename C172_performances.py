@@ -537,12 +537,19 @@ class Cruise():
 
     def winds_aloft(self,airport):
         try:
-            url = "http://www.srh.noaa.gov/data/WNO/FD1US1"
+            if self.station[-1]=="3": 
+                url = "http://www.srh.noaa.gov/data/WNO/FD3US3"
+                self.station=self.station[:3]
+            else: url = "http://www.srh.noaa.gov/data/WNO/FD1US1"
             def_alt=np.array([3000, 6000, 9000, 12000, 18000, 24000, 30000, 34000, 39000])
             winds    =[]
             for line in urllib2.urlopen(url):
                 winds.append(line)
 
+            date=filter(lambda x: "DATA" in x, winds)[0].split()
+            print ' '.join(date)
+            valid=filter(lambda x: "VALID" in x, winds)[0].split()
+            print ' '.join(valid)
             data = filter(lambda x: self.station in x, winds)[0].split()
             data.remove(self.station)
             print data
@@ -748,18 +755,21 @@ def display_all2(airports,cruiselegs):
 
 if __name__ == '__main__':
 
-    checkpts=[]
+
     if len(sys.argv)==2 and sys.argv[1]=="-m": 
         manual_inputs()
     else:
+        checkpts=[]
         if len(sys.argv)>=3:
             for i in xrange(1,len(sys.argv)):
                 checkpts.append(sys.argv[i].lower().title())
             #depart = sys.argv[1].lower().title()
             #destin = sys.argv[2].lower().title()
         else:
-            depart = raw_input("Departure airport: ") or "KMTN"
-            destin = raw_input("Arrival airport: " ) or "KMTN"
+            checkpts.append(raw_input("Departure airport: ") or "KMTN")
+            checkpts.append(raw_input("Arrival airport: ") or "KMTN")
+            #depart = raw_input("Departure airport: ") or "KMTN"
+            #destin = raw_input("Arrival airport: " ) or "KMTN"
 
 
         airports=[]
