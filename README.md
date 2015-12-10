@@ -44,11 +44,20 @@ The script will then prompt the user to enter a few values:
 
 ## Output
 
-The script outputs a variety of information based on the inputs from the user. 
+The script outputs a variety of information based on the inputs from the
+user. In particular, the script will the airports' elevation, latest METAR
+weather, and derived pressure and density altitudes, along with performance
+quantities such as:
+
+* takeoff distances;
+* landing distances;
+* climb rate, time, distance, and fuel usage;
+* cruise %MCP, KTAS, GPH, and wind corrections;
+* fuel requirements.
+
+Here is an example of the sections output by the script:
 
 #### Departure
-
-For example:
 
 DEPARTURE KMTN (21 ft):  
 101345Z 00000KT 1SM BR SKC 06/06 A3003   
@@ -60,8 +69,6 @@ GRD CLR 50FT: 1531 ft
 
 
 #### Arrival
-
-For example:
 
 ARRIVAL KBWI (146 ft):  
 101354Z 00000KT 4SM BR FEW250 07/06 A3001   
@@ -75,8 +82,6 @@ LDG CLR 50FT: 1312 ft
 
 #### Climb leg
 
-For example:
-
 CLIMB rate: 623 fpm  
 CLIMB time:  3.90 min. (to 3000 ft)  
 CLIMB dist:  5.80 NM  
@@ -84,8 +89,6 @@ CLIMB fuel (incl. taxi): 2.56 gal.
 
 
 #### Cruise leg & Wind correction
-
-For example,
 
 CRUISE LEG 1: KMTN --> KBWI  
 3000 ft,  2300 RPM, Winds: 000/0+5  
@@ -107,8 +110,6 @@ Total time    : 0.15 hrs (8 min.)
 
 
 #### Fuel requirements
-
-For example, 
 
 Taxi/Run-up/Takeoff :  1.40 gal.  
 Climb to 3000 ft    :  1.16 gal.  
