@@ -38,8 +38,20 @@ The script will then prompt the user to enter a few values:
 * Cruise RPM (use only a selected number of RPM values)
 * Winds aloft station for leg (e.g. EMI)
 
+Additionally, the user can also simply call the script "python
+C172_performances.py" and the script will prompt the user to specify the
+airports.
+
+Finally, to have full control over the values used in determining the
+performance quantities, the user can also use the manual mode with the "-m"
+flag: "python C172_performances.py -m". However, this mode does not offer the
+Winds Aloft correction angle calculations.
+
 
 ## Data Processing
+
+
+
 
 
 ## Output
