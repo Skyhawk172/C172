@@ -36,9 +36,10 @@ Note that the user can enter more than two airports.
 
 The script will then prompt the user to enter a few values:
 
-* Cruise or leg altitude [ft];
-* Cruise RPM (use only a selected number of RPM values);
-* Winds aloft station for leg (e.g. EMI).
+* Cruise or leg altitude [ft];  
+* Cruise RPM (use only a selected number of RPM values);  
+* Winds aloft station for leg (e.g. EMI; adding the number 3 at the end will use
+  the later predicted winds aloft +12/+24 hours).
 
 Additionally, the user can also simply call the script "python
 C172_performances.py" and the script will prompt the user to specify the
