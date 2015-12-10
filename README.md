@@ -21,7 +21,9 @@ of the script). Fly safe!
 The performance tables from the POH are actually hard-coded in the Python
 script. Any modification should therefore be made to the script itself. The
 only external file necessary for running this script is the "airport.csv", which
-should be updated or downloaded from http://ourairports.com/data/.
+should be updated or downloaded from http://ourairports.com/data/.  The script 
+uses the airport identifier to determine the airport elevation and geographic 
+location (lat, long) for the waypoint distance calculations.
 
 
 
@@ -34,9 +36,9 @@ Note that the user can enter more than two airports.
 
 The script will then prompt the user to enter a few values:
 
-* Cruise or leg altitude;
-* Cruise RPM (use only a selected number of RPM values)
-* Winds aloft station for leg (e.g. EMI)
+* Cruise or leg altitude [ft];
+* Cruise RPM (use only a selected number of RPM values);
+* Winds aloft station for leg (e.g. EMI).
 
 Additionally, the user can also simply call the script "python
 C172_performances.py" and the script will prompt the user to specify the
@@ -45,12 +47,26 @@ airports.
 Finally, to have full control over the values used in determining the
 performance quantities, the user can also use the manual mode with the "-m"
 flag: "python C172_performances.py -m". However, this mode does not offer the
-Winds Aloft correction angle calculations.
+Winds Aloft correction or Fuel requirement calculations.
 
 
 ## Data Processing
 
+Based on the input airport identifier, the script: 
 
+1. retrieves the METAR weather information for all the airports.  The script
+parses temperature and pressure setting from the METAR and determines standard
+temperature, pressure altitude, and density altitude;
+
+2. calculates takeoff and landing performance quantities;
+
+3. calculates true course and distance between waypoints;
+
+4. retrieves winds aloft and extrapolates for cruise altitude;
+
+5. calculates cruise performance quantities and wind correction angle;
+
+6. displays all the retrieved and calculation quantities on terminal.
 
 
 
