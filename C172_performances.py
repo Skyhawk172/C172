@@ -613,11 +613,6 @@ class Cruise():
 
 
 def display_all(a1,a2,c1):
-#    saveout = sys.stdout
-#    fsock = open(a1.id.upper()+"_"+a2.id.upper()+time.strftime("%d-%m-%Y")+".txt", 'w')
-#    sys.stdout = fsock
-
-    #print "\033c" #clear screen
     print "---------------------------------------------------"
     print "DEPARTURE %s (%d ft):" %(a1.id.upper(),a1.elev)
     for p in a1.metar: print p,
@@ -670,16 +665,8 @@ def display_all(a1,a2,c1):
     print 'TOTAL FUEL          : %5.2f gal.'      %(total_fuel)
     print "--------------------------------"
 
-#    sys.stdout = saveout
-#    fsock.close()
-
 
 def display_all2(airports,cruiselegs):
-#    saveout = sys.stdout
-#    fsock = open(a1.id.upper()+"_"+a2.id.upper()+time.strftime("%d-%m-%Y")+".txt", 'w')
-#    sys.stdout = fsock
-
-    #print "\033c" #clear screen
     print "---------------------------------------------------"
     print "DEPARTURE %s (%d ft):" %(airports[0].id.upper(),airports[0].elev)
     for p in airports[0].metar: print p,
@@ -741,15 +728,11 @@ def display_all2(airports,cruiselegs):
     print 'Total Cruise %d ft: %5.2f gal.'        %(cruiselegs[0].alt,cruise_fuel)
     print 'Descent/Pattern/Taxi: %5.2f gal.'      %(1.4)
     print 'VFR reserve         : %5.2f gal.'      %(cruiselegs[-1].gph)
-    print "--------------------------------"
+    print "----------------------------------"
     print 'TOTAL FUEL          : %5.2f gal.'      %(total_fuel)
-    print "--------------------------------"
-
-
-
-#    sys.stdout = saveout
-#    fsock.close()
-
+    print "----------------------------------"
+    print "USE CAREFULLY: NOT FOR NAVIGATION"
+    print "----------------------------------"
 
 
 
@@ -763,14 +746,9 @@ if __name__ == '__main__':
         if len(sys.argv)>=3:
             for i in xrange(1,len(sys.argv)):
                 checkpts.append(sys.argv[i].lower().title())
-            #depart = sys.argv[1].lower().title()
-            #destin = sys.argv[2].lower().title()
         else:
             checkpts.append(raw_input("Departure airport: ") or "KMTN")
             checkpts.append(raw_input("Arrival airport: ") or "KMTN")
-            #depart = raw_input("Departure airport: ") or "KMTN"
-            #destin = raw_input("Arrival airport: " ) or "KMTN"
-
 
         airports=[]
         for i in xrange(len(checkpts)):
@@ -795,25 +773,4 @@ if __name__ == '__main__':
             cruiselegs[c].calc_wca()
 
         display_all2(airports, cruiselegs)
-
-
-        #display_all(airports[1],airports[2],cruiselegs[1])
-
-#        a1=Airport(1,depart)
-#        a2=Airport(2,destin)
-
-#        a1.calc()
-#        a1.takeoff()
-#        a2.calc()
-#        a2.landing()
-
-#        c1=Cruise(a1,a2)
-#        c1.winds_aloft(a1)
-#        c1.calc(a1)
-#        c1.climb(a1)
-#        c1.cruise()
-#        c1.calc_wca()
-        
-#        display_all(a1,a2,c1)
-
 
