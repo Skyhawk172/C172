@@ -49,7 +49,7 @@ The script outputs a variety of information based on the inputs from the user.
 #### Departure
 
 For example:
----------------------------------------------------
+
 DEPARTURE KMTN (21 ft):
 101345Z 00000KT 1SM BR SKC 06/06 A3003 
 Pressure alt.: -89.0 ft
@@ -57,7 +57,6 @@ Density alt. : -1169.0 ft
 
 GRD ROLL    : 899 ft
 GRD CLR 50FT: 1531 ft
----------------------------------------------------
 
 
 #### Arrival
