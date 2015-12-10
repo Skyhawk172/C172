@@ -11,9 +11,11 @@ user inputs.
 ## Disclaimer
 
 The output of this script are intended only as supplementary information and are
-not to be used for actual navigation. Always use your Pilot Operating Handbook.  
-The use or misuse of this script and their consequences are the sole responsibility 
-of the user (i.e. not me, the creator of the script). Fly safe!
+not to be used for actual navigation. Always use your Pilot Operating
+Handbook. The use or misuse of this script and their consequences are the sole
+responsibility of the user (i.e. not me, the creator of the script).  
+
+Fly safe!
 
 
 ## Input File Description
