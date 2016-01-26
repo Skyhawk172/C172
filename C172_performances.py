@@ -432,20 +432,21 @@ def manual_weather(id):
     return  pres, temp, [str(pres),"in Hg,  ",str(temp),"C"]
 
 
-def auto_weather(tag, id):
+def auto_weather(tag, id, name):
     id = id.title()
     if id[0]!="K" and id[0]!="C": id="K"+id
-    if tag==1: print "Connecting to aviationweather.gov/adds"
+    if tag==1: print "Connecting to aviationweather.gov/adds \n"
     url = "http://www.aviationweather.gov/adds/metars?station_ids="\
           +id+"&std_trans=standard&chk_metars=on&hoursStr=most+recent+only&submitmet=Submit"
     page = urllib2.urlopen(url).read()
+    print name,":"
 
     metar = page.split(id.upper())[1]
     metar = re.sub('<[^<]+?>', '', metar)
     metar = metar.split()
-    print id.upper(),
+    print '   ',id.upper(),
     for p in metar: print p,
-    print
+    print 
     try: 
         idx=metar.index("RMK")
         metar = metar[:idx]
@@ -476,8 +477,8 @@ def auto_airport_info(tag, id):
     except: 
         print 'No airport %s found.' %id.upper()
         sys.exit()
-    latit, longit, elev = float(line[4]),float(line[5]),int(line[6])
-    return elev, latit, longit
+    latit, longit, elev, name = float(line[4]),float(line[5]),int(line[6]), line[3]
+    return elev, latit, longit, name
 
 
 def distance(a1,a2):
@@ -499,9 +500,9 @@ class Airport():
         self.id = id
 
         #url retrieve airport infor & weather
-        self.elev, self.lat, self.long   = auto_airport_info(self.tag, self.id)
-        try:    self.pres, self.temp, self.metar = auto_weather(self.tag,self.id)
-        except: self.pres, self.temp, self.metar = manual_weather(self.id)
+        self.elev, self.lat, self.long, self.name = auto_airport_info(self.tag, self.id)
+        try:    self.pres, self.temp, self.metar  = auto_weather(self.tag,self.id, self.name)
+        except: self.pres, self.temp, self.metar  = manual_weather(self.id)
 
     def calc(self):
         self.pres_alt = self.elev   - (self.pres - 29.92)*1000 
@@ -523,7 +524,7 @@ class Cruise():
 
         self.alt=-1
         while self.alt<0 or self.alt>12000:
-            self.alt = int(raw_input("Cruise altitude [3000 ft]: ") or 3000)       # ft MSL
+            self.alt = int(raw_input("\nCruise altitude [3000 ft]: ") or 3000)       # ft MSL
         #self.temp= int(raw_input("Cruise altitude temperature [9 C]: ") or 9)  # Celsius
         self.RPM = int(raw_input("Cruise RPM [2300]: ") or 2300)              #RPM
         self.station=(raw_input("Winds aloft station for leg [EMI]: ") or "EMI").upper()
@@ -536,6 +537,7 @@ class Cruise():
 
 
     def winds_aloft(self,airport):
+        print
         try:
             if self.station[-1]=="3": 
                 url = "http://www.srh.noaa.gov/data/WNO/FD3US3"
