@@ -539,9 +539,12 @@ class Cruise():
     def winds_aloft(self,airport):
         print
         try:
-            if self.station[-1]=="3": 
+            if self.station[-2:]=="12": 
                 url = "http://www.srh.noaa.gov/data/WNO/FD3US3"
                 self.station=self.station[:3]
+            elif self.station[-2:1]=="24": 
+                url = "http://www.srh.noaa.gov/data/WNO/FD5US5"
+                self.station=self.station[:3]                
             else: url = "http://www.srh.noaa.gov/data/WNO/FD1US1"
             def_alt=np.array([3000, 6000, 9000, 12000, 18000, 24000, 30000, 34000, 39000])
             winds    =[]
