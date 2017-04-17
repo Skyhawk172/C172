@@ -579,25 +579,29 @@ class Cruise():
         except:
             print "No winds aloft for %s" %self.station
             self.WS = float(raw_input("Wind velocity at %d ft [0 KTS] : " %self.alt) or 0.)
-            self.WD = float(raw_input("Wind direction at %d ft [0 deg]: "%self.alt) or 0.)* np.pi/180.
+            self.WD = float(raw_input("Wind direction at %d ft [0 deg]: "%self.alt) or 0.)
             self.temp= int(raw_input("Cruise temperature [9 C]: ") or 9)  # Celsius
 
         print "Winds aloft %d ft: %d/%d%+d" %(self.alt,int(self.WD), int(self.WS), int(self.temp))
+        self.WD = self.WD 
 
     def calc_wca(self):
         CRS= self.truecourse *np.pi/180. 
-        WD = self.WD *np.pi/180. 
-        WS = self.WS
+        WindDir = self.WD *np.pi/180. 
+        WindSpeed = self.WS
 
-        SWC=(WS/self.ktas)*np.sin(WD-CRS)
+        
+        SWC=(WindSpeed/self.ktas)*np.sin( (WindDir-CRS) )
         if abs(SWC)>1:
             print "course cannot be flown-- wind too strong"
         else:
             HD=CRS + np.arcsin(SWC)
             if HD<0: HD=HD+2*np.pi
             if (HD>2*np.pi): HD=HD-2*np.pi
-            self.GS=self.ktas*np.sqrt(1.-SWC**2) - WS*np.cos(WD-CRS)
+            self.GS=self.ktas*np.sqrt(1.-SWC**2) - WindSpeed*np.cos( (WindDir-CRS) )
             if (self.GS < 0):  "course cannot be flown-- wind too strong"
+
+
         self.trueheading = HD*180/np.pi
         angles=np.unwrap([HD,CRS])
         self.wca         =(angles[0]-angles[1])*180/np.pi #(HD-CRS)*180/np.pi
