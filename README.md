@@ -55,7 +55,7 @@ Winds Aloft correction or Fuel requirement calculations.
 
 ## Data Processing
 
-Based on the input airport identifier, the script: 
+Based on the user input airport identifiers, the script: 
 
 1. retrieves the METAR weather information for all the airports.  The script
 parses temperature and pressure setting from the METAR and determines standard
