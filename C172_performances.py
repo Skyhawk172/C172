@@ -473,12 +473,28 @@ def auto_airport_info(tag, id):
     with open('airports.csv', 'rb') as f:
         reader = csv.reader(f)
         airports = list(reader)
-    try: line = filter(lambda x: id.upper() in x, airports)[0]
-    except: 
-        print 'No airport %s found.' %id.upper()
-        sys.exit()
-    latit, longit, elev, name = float(line[4]),float(line[5]),int(line[6]), line[3]
-    return elev, latit, longit, name
+    with open('navaids.csv', 'rb') as f:
+        reader = csv.reader(f)
+        navaids = list(reader)
+
+    navaid=False
+    if id[0].upper()=="K":
+        try:
+            line = filter(lambda x: id.upper() in x, airports)[0]
+            latit, longit, elev, name = float(line[4]),float(line[5]),int(line[6]), line[3]
+
+        except:
+            print 'No airport %s found.' %id.upper()
+            sys.exit()
+    else:
+        try:
+            line = filter(lambda x: id.upper() in x and 'US' in x, navaids)[0]
+            latit, longit, elev, name = float(line[6]),float(line[7]),int(line[8]), line[3]
+            navaid=True
+        except:
+            print 'No navaid %s found.' %id.upper()
+            sys.exit()
+    return elev, latit, longit, name, navaid
 
 
 def distance(a1,a2):
@@ -500,14 +516,20 @@ class Airport():
         self.id = id
 
         #url retrieve airport infor & weather
-        self.elev, self.lat, self.long, self.name = auto_airport_info(self.tag, self.id)
-        try:    self.pres, self.temp, self.metar  = auto_weather(self.tag,self.id, self.name)
-        except: self.pres, self.temp, self.metar  = manual_weather(self.id)
+        self.elev, self.lat, self.long, self.name, self.navaid = auto_airport_info(self.tag, self.id)
+        if self.navaid:
+            self.pres, self.temp, self.metar=None, None, None
+        else:
+            try:    self.pres, self.temp, self.metar  = auto_weather(self.tag,self.id, self.name)
+            except: self.pres, self.temp, self.metar  = manual_weather(self.id)
 
     def calc(self):
-        self.pres_alt = self.elev   - (self.pres - 29.92)*1000 
-        self.std_temp = 15 - (self.elev/1000 * self.lapse_rate)
-        self.dens_alt = self.pres_alt + 120*(self.temp - self.std_temp)
+        if self.navaid:
+            self.pres_alt, self.std_temp, self.dens_alt= None, None, None
+        else:
+            self.pres_alt = self.elev   - (self.pres - 29.92)*1000 
+            self.std_temp = 15 - (self.elev/1000 * self.lapse_rate)
+            self.dens_alt = self.pres_alt + 120*(self.temp - self.std_temp)
 
     def takeoff(self):
         self.roll, self.clear50ft = takeoff(self.pres_alt, self.temp)
@@ -517,15 +539,15 @@ class Airport():
 
 
 class Cruise():
-    def __init__(self,a1,a2):
-        self.av_pres=np.average([a1.pres,a2.pres])
-        self.av_temp=np.average([a1.temp,a2.temp])
-        self.av_std_temp=np.average([a1.std_temp,a2.std_temp])
+    def __init__(self,leg, a1,a2):
+        self.av_pres=np.average(filter(None,[a1.pres,a2.pres]))
+        self.av_temp=np.average(filter(None,[a1.temp,a2.temp]))
+        self.av_std_temp=np.average(filter(None,[a1.std_temp,a2.std_temp]))
 
         self.alt=-1
+        print '\nLEG {:d}:'.format(leg+1),
         while self.alt<0 or self.alt>12000:
             self.alt = int(raw_input("\nCruise altitude [3000 ft]: ") or 3000)       # ft MSL
-        #self.temp= int(raw_input("Cruise altitude temperature [9 C]: ") or 9)  # Celsius
         self.RPM = int(raw_input("Cruise RPM [2300]: ") or 2300)              #RPM
         self.station=(raw_input("Winds aloft station for leg [EMI]: ") or "EMI").upper()
 
@@ -558,7 +580,7 @@ class Cruise():
             print ' '.join(valid)
             data = filter(lambda x: self.station in x, winds)[0].split()
             data.remove(self.station)
-            print data
+            print airport.id.upper(),data
 
             winds_dir=[None]*len(data)
             winds_vel=[None]*len(data)
@@ -570,8 +592,9 @@ class Cruise():
                 if winds_alt[i]>24000: 
                     winds_tem[i]=-float(data[i][-2:])
                 else: winds_tem[i]=float(data[i][-3:])
-                if winds_alt[i]==3000: winds_tem[i]= np.average([airport.temp,winds_tem[i+1]])
-
+                if winds_alt[i]==3000:
+                    if airport.temp: winds_tem[i]= np.average([airport.temp,winds_tem[i+1]])
+                    else: winds_tem[i]=winds_tem[i+1]+6.
             winds_dir = np.unwrap(winds_dir)*180/np.pi
             self.WS   = np.interp(self.alt, winds_alt, winds_vel)
             self.temp = np.interp(self.alt, winds_alt, winds_tem)
@@ -770,7 +793,7 @@ if __name__ == '__main__':
 
         cruiselegs=[]
         for i in xrange(len(airports)-1):
-            cruiselegs.append(Cruise(airports[i],airports[i+1]))
+            cruiselegs.append(Cruise(i,airports[i],airports[i+1]))
             cruiselegs[i].winds_aloft(airports[i])
             cruiselegs[i].calc(airports[i])
 
