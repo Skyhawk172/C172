@@ -540,13 +540,13 @@ class Cruise():
         print
         try:
             if self.station[-2:]=="12": 
-                url = "http://www.aviationweather.gov/windtemp/data?level=l&fcst=12&region=all&layout=on"
+                url = "https://www.aviationweather.gov/windtemp/data?level=low&fcst=12&region=all&layout=on&date="
                 self.station=self.station[:3]
             elif self.station[-2:]=="24": 
-                url = "http://www.aviationweather.gov/windtemp/data?level=l&fcst=24&region=all&layout=on"
+                url = "https://www.aviationweather.gov/windtemp/data?level=low&fcst=24&region=all&layout=on&date="
                 self.station=self.station[:3]                
             else:
-                url = "http://www.aviationweather.gov/windtemp/data?level=l&fcst=06&region=all&layout=on"
+                url = "https://www.aviationweather.gov/windtemp/data?level=low&fcst=06&region=all&layout=on&date="
             def_alt=np.array([3000, 6000, 9000, 12000, 18000, 24000, 30000, 34000, 39000])
             winds    =[]
             for line in urllib2.urlopen(url):
